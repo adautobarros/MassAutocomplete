@@ -11,8 +11,8 @@ angular.module('MassAutoComplete', [])
       '<div class="ac-container" ng-show="show_autocomplete && results.length > 0" style="position:absolute;">' +
         '<ul class="ac-menu">' +
           '<li ng-repeat="result in results" ng-if="$index > 0" ' +
-            'class="ac-menu-item" ng-class="$index == selected_index ? \'ac-state-focus\': \'\'">' +
-            '<a href ng-click="apply_selection($index)" ng-bind-html="result.label"></a>' +
+            'class="ac-menu-item" ng-click="apply_selection($index)" ng-class="$index == selected_index ? \'ac-state-focus\': \'\'">' +
+            '<a href ng-bind-html="result.label"></a>' +
           '</li>' +
         '</ul>' +
       '</div>',
@@ -36,16 +36,11 @@ angular.module('MassAutoComplete', [])
         BLUR: 'blur'
       };
 
-      var bound_events = {};
-      bound_events[EVENTS.BLUR] = null;
-      bound_events[EVENTS.KEYDOWN] = null;
-      bound_events[EVENTS.RESIZE] = null;
-
       var _user_options = $scope.options() || {};
       var user_options = {
         debounce_position: _user_options.debounce_position || 150,
         debounce_attach: _user_options.debounce_attach || 300,
-        debounce_suggest: _user_options.debounce_suggest || 200,
+        debounce_suggest: _user_options.debounce_suggest || 300,
         debounce_blur: _user_options.debounce_blur || 150
       };
 
@@ -80,8 +75,8 @@ angular.module('MassAutoComplete', [])
             scrollLeft = $document[0].body.scrollLeft || $document[0].documentElement.scrollLeft || $window.pageXOffset,
             container = $scope.container[0];
 
-        container.style.top = rect.top + rect.height + scrollTop + 'px';
-        container.style.left = rect.left + scrollLeft + 'px';
+        //container.style.top = rect.top + rect.height + scrollTop + 'px';
+        //container.style.left = rect.left + scrollLeft + 'px';
         container.style.width = rect.width + 'px';
       }
       var position_autocomplete = debounce(_position_autocomplete, user_options.debounce_position);
@@ -129,7 +124,7 @@ angular.module('MassAutoComplete', [])
         $scope.selected_index = 0;
         $scope.waiting_for_suggestion = true;
 
-        if (typeof(term) === 'string' && term.length > 0) {
+        if (typeof(term) === 'string' && term.length > 1) {
           $q.when(current_options.suggest(term),
             function suggest_succeeded(suggestions) {
               // Make sure the suggestion we are processing is of the current element.
@@ -171,13 +166,13 @@ angular.module('MassAutoComplete', [])
           var value = current_element.val();
           update_model_value(value);
           current_options.on_detach && current_options.on_detach(value);
-          current_element.unbind(EVENTS.KEYDOWN, bound_events[EVENTS.KEYDOWN]);
-          current_element.unbind(EVENTS.BLUR, bound_events[EVENTS.BLUR]);
+          current_element.unbind(EVENTS.KEYDOWN);
+          current_element.unbind(EVENTS.BLUR);
         }
 
         // Clear references and events.
         $scope.show_autocomplete = false;
-        angular.element($window).unbind(EVENTS.RESIZE, bound_events[EVENTS.RESIZE]);
+        angular.element($window).unbind(EVENTS.RESIZE);
         value_watch && value_watch();
         $scope.selected_index = $scope.results = undefined;
         current_model = current_element = previous_value = undefined;
@@ -224,7 +219,7 @@ angular.module('MassAutoComplete', [])
       function bind_element() {
         angular.element($window).bind(EVENTS.RESIZE, position_autocomplete);
 
-        bound_events[EVENTS.BLUR] = function () {
+        current_element.bind(EVENTS.BLUR, function () {
           // Detach the element from the auto complete when input loses focus.
           // Focus is lost when a selection is made from the auto complete menu
           // using the mouse (or touch). In that case we don't want to detach so
@@ -233,10 +228,9 @@ angular.module('MassAutoComplete', [])
             if (!current_element || current_element[0] !== $document[0].activeElement)
               that.detach();
           }, user_options.debounce_blur);
-        };
-        current_element.bind(EVENTS.BLUR, bound_events[EVENTS.BLUR]);
+        });
 
-        bound_events[EVENTS.KEYDOWN] = function (e) {
+        current_element.bind(EVENTS.KEYDOWN, function (e) {
           // Reserve key combinations with shift for different purposes.
           if (e.shiftKey) return;
 
@@ -310,8 +304,7 @@ angular.module('MassAutoComplete', [])
               }
               break;
           }
-        };
-        current_element.bind(EVENTS.KEYDOWN, bound_events[EVENTS.KEYDOWN]);
+        });
       }
 
       $scope.$on('$destroy', function () {
